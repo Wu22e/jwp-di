@@ -4,6 +4,7 @@ import com.google.common.collect.Sets;
 import core.annotation.Repository;
 import core.annotation.Service;
 import core.annotation.web.Controller;
+import core.di.BeanDefinitionRegistry;
 import core.di.factory.example.MyQnaService;
 import core.di.factory.example.QnaController;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,9 @@ public class BeanFactoryTest {
     public void setup() {
         reflections = new Reflections("core.di.factory.example");
         Set<Class<?>> preInstantiateClazz = getTypesAnnotatedWith(Controller.class, Service.class, Repository.class);
-        beanFactory = new BeanFactory(preInstantiateClazz);
+        BeanDefinitionRegistry beanDefinitionRegistry = new BeanDefinitionRegistry();
+        beanDefinitionRegistry.registerClassPathBeans(preInstantiateClazz);
+        beanFactory = new BeanFactory(beanDefinitionRegistry);
         beanFactory.initialize();
     }
 

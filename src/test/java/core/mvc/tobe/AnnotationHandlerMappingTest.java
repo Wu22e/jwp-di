@@ -2,6 +2,7 @@ package core.mvc.tobe;
 
 import core.di.factory.ApplicationContext;
 import core.jdbc.JdbcTemplate;
+import next.config.MyConfiguration;
 import next.dao.UserDao;
 import next.model.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,13 +19,12 @@ public class AnnotationHandlerMappingTest {
 
     @BeforeEach
     public void setup() {
-        ApplicationContext applicationContext = new ApplicationContext("core.mvc.tobe");
-        applicationContext.initialize();
+        ApplicationContext applicationContext = new ApplicationContext(MyConfiguration.class);
         handlerMapping = new AnnotationHandlerMapping(applicationContext);
         handlerMapping.initialize();
 
         DBInitializer.initialize();
-        userDao = new UserDao(new JdbcTemplate());
+        userDao = new UserDao(applicationContext.getBean(JdbcTemplate.class));
     }
 
     @Test

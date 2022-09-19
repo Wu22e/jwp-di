@@ -19,6 +19,17 @@
 
 > MVC 프레임워크의 AnnotationHandlerMapping 이 BeanFactory 와 BeanScanner 를 활용하여 동작하도록 리팩토링 한다.
 
+# 기능 요구사항 (@Configuration 설정)
+>JdbcTemplate 코드를 분석하면 데이터베이스의 Connection 을 생성하는 부분이 static 으로 구현되어 있는 것을 알 수 있다. 또, 데이터베이스 설정 정보 또한 하드코딩으로 관리하고 있어 특정 데이터베이스에 종속되는 구조로 구현되어 있다.
+>데이터베이스에 종속되지 않도록 구현하고, Connection Pooling 을 지원하기 위해 Connection 대신 javax.sql.DataSource 인터페이스에 의존관계를 가지도록 지원하자.
+
+> 이 문제를 해결하는 좋은 방법은 개발자가 직접 빈을 생성해 관리할 수 있는 별도의 설정 파일을 만드는 것이다. 예를 들어 설정 파일에 빈 인스턴스를 생성하는 메소드를 구현해 놓고, 애노테이션으로 설정한다. 
+> DI 프레임워크는 이 설정 파일을 읽어 BeanFactory 에 빈으로 저장할수 있다면 BeanScanner 를 통해 등록한 빈과 같은 저장소에서 관리할 수 있다.
+
+- 자바 클래스가 설정 파일이라는 표시는 `@Configuration` 으로 한다. 각 메소드에서 생성하는 인스턴스가 BeanFactory 에 빈으로 등록하는 설정은 `@Bean` 애노테이션으로 한다.
+- BeanScanner 에서 사용할 기본 패키지에 대한 설정을 하드코딩 했는데, 설정 파일에서 @ComponentScan 으로 설정할 수 있도록 지원하자.
+- 위와 같이 `@Configuration` 설정 파일을 등록한 빈과 BeanScanner 를 통해 등록한 빈 간에도 DI 가 가능해야 한다.
+
 # 기능 목록
 - BeanScanner 객체
   - 특정 package 하위에 @Controller, @Service, @Repository 애노테이션이 붙은 클래스를 reflections 를 이용하여 scan 하고 그 타입을 가져온다.
