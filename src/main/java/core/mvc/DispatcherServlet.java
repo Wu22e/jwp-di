@@ -32,6 +32,7 @@ public class DispatcherServlet extends HttpServlet {
     @Override
     public void init() {
         ApplicationContext applicationContext = new ApplicationContext(MyConfiguration.class);
+        applicationContext.initialize();
 
         handlerMappingRegistry = new HandlerMappingRegistry();
         handlerMappingRegistry.addHandlerMpping(new RequestMapping());

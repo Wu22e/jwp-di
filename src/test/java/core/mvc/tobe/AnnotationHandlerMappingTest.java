@@ -1,8 +1,6 @@
 package core.mvc.tobe;
 
 import core.di.factory.ApplicationContext;
-import core.jdbc.JdbcTemplate;
-import next.config.MyConfiguration;
 import next.dao.UserDao;
 import next.model.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,14 +19,13 @@ public class AnnotationHandlerMappingTest {
 
     @BeforeEach
     public void setup() {
-        ApplicationContext applicationContext = new ApplicationContext(MyConfiguration.class);
+        ApplicationContext applicationContext = new ApplicationContext(MyTestConfiguration.class);
         applicationContext.initialize();
         handlerMapping = new AnnotationHandlerMapping(applicationContext);
         handlerMapping.initialize();
 
         DBInitializer.initialize(applicationContext.getBean(DataSource.class));
         userDao = applicationContext.getBean(UserDao.class);
-        System.out.println("------>1 " + userDao);
     }
 
     @Test
@@ -36,7 +33,6 @@ public class AnnotationHandlerMappingTest {
         User user = new User("pobi", "password", "포비", "pobi@nextstep.camp");
         createUser(user);
         assertThat(userDao.findByUserId(user.getUserId())).isEqualTo(user);
-        System.out.println("------>2 " + userDao);
 
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/users");
