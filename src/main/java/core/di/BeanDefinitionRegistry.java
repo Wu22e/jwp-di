@@ -5,21 +5,21 @@ import org.reflections.ReflectionUtils;
 import org.reflections.util.ReflectionUtilsPredicates;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 public class BeanDefinitionRegistry {
 
-    private final Map<Class<?>, BeanDefinition> beanDefinitions;
+    private final BeanDefinitions methodBeanDefinitions;
+    private final BeanDefinitions classBeanDefinitions;
 
     public BeanDefinitionRegistry() {
-        this.beanDefinitions = new HashMap<>();
+        this.methodBeanDefinitions = new BeanDefinitions();
+        this.classBeanDefinitions = new BeanDefinitions();
     }
 
     public void registerClassPathBeans(Set<Class<?>> classPathBeanClasses) {
         for (Class<?> classPathBeanClass : classPathBeanClasses) {
-            this.beanDefinitions.put(classPathBeanClass, new BeanDefinition(classPathBeanClass));
+            this.classBeanDefinitions.add(new BeanDefinition(classPathBeanClass));
         }
     }
 
@@ -33,15 +33,23 @@ public class BeanDefinitionRegistry {
         Set<Method> beanMethods = ReflectionUtils.getAllMethods(componentClass, ReflectionUtilsPredicates.withAnnotation(Bean.class));
 
         for (Method method : beanMethods) {
-            this.beanDefinitions.put(method.getReturnType(), new BeanDefinition(componentClass, method));
+            this.methodBeanDefinitions.add(new BeanDefinition(componentClass, method));
         }
     }
 
-    public Set<Class<?>> getPreInstantiateBeans() {
-        return this.beanDefinitions.keySet();
+    public BeanDefinition getMethodBeanDefinition(Class<?> methodReturnType) {
+        return this.methodBeanDefinitions.getMethodBeanDefinition(methodReturnType);
     }
 
-    public BeanDefinition getBeanDefinition(Class<?> preInstantiateBean) {
-        return this.beanDefinitions.get(preInstantiateBean);
+    public Set<BeanDefinition> getClassBeanDefinitions() {
+        return this.classBeanDefinitions.getBeanDefinitions();
+    }
+
+    public Set<Class<?>> getPreInstantiateClassBean() {
+        return this.classBeanDefinitions.getPreInstantiateClassBean();
+    }
+
+    public Set<BeanDefinition> getMethodBeanDefinitions() {
+        return this.methodBeanDefinitions.getBeanDefinitions();
     }
 }

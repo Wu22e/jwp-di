@@ -3,9 +3,11 @@ package core.di.factory;
 import com.google.common.collect.Maps;
 import core.di.BeanDefinition;
 import core.di.BeanDefinitionRegistry;
+import core.di.BeanDefinitions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -14,7 +16,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,12 +23,10 @@ public class BeanFactory {
     private static final Logger logger = LoggerFactory.getLogger(BeanFactory.class);
 
     private BeanDefinitionRegistry registry;
-//    private Set<Class<?>> preInstantiateBeans;
     private Map<Class<?>, Object> beans = Maps.newHashMap();
 
     public BeanFactory(BeanDefinitionRegistry registry) {
         this.registry = registry;
-//        this.preInstantiateBeans = registry.getPreInstantiateBeans();
     }
 
     public Map<Class<?>, Object> getBeansAnnotatedWith(Class<? extends Annotation> annotation) {
@@ -42,23 +41,42 @@ public class BeanFactory {
     }
 
     public void initialize() {
-//        for (Class<?> preInstantiateBean : this.preInstantiateBeans) {
-        for (Class<?> preInstantiateBean : this.registry.getPreInstantiateBeans()) {
-            this.beans.put(preInstantiateBean, instantiateClassPathBean(preInstantiateBean, this.registry.getBeanDefinition(preInstantiateBean)));
+        initializeConfigurationBean(this.registry.getMethodBeanDefinitions());
+        initializeClassPathBean(this.registry.getClassBeanDefinitions());
+
+//        for (Class<?> preInstantiateBean : this.registry.getPreInstantiateBeans()) {
+//            BeanDefinition beanDefinition = this.registry.getBeanDefinition(preInstantiateBean);
+//            if (beanDefinition.isMethodBean()) {
+//                this.beans.put(preInstantiateBean, instantiateClassPathBean(preInstantiateBean, this.registry.getBeanDefinition(preInstantiateBean)));
+//            }
+//            this.beans.put(preInstantiateBean, instantiateClassPathBean(preInstantiateBean));
+//        }
+    }
+
+    private void initializeClassPathBean(Set<BeanDefinition> classBeanDefinitions) {
+        for (BeanDefinition classBeanDefinition : classBeanDefinitions) {
+            Class<?> preInstantiateBean = classBeanDefinition.getBeanClass();
+            this.beans.put(preInstantiateBean, instantiateClassPathBean(preInstantiateBean));
         }
     }
 
-    private Object instantiateClassPathBean(Class<?> preInstantiateBean, BeanDefinition beanDefinition) {
-        Method beanMethod = beanDefinition.getBeanMethod();
-        if (beanMethod == null) {
-            return instantiateClassPathBean(preInstantiateBean);
+    private void initializeConfigurationBean(Set<BeanDefinition> methodBeanDefinitions) {
+        for (BeanDefinition methodBeanDefinition : methodBeanDefinitions) {
+            this.beans.put(methodBeanDefinition.methodReturnType(), instantiateConfigurationBean(methodBeanDefinition.getBeanMethod()));
         }
-        return instantiateConfigurationBean(beanMethod, beanDefinition);
     }
+
+//    private Object instantiateClassPathBean(Class<?> preInstantiateBean, BeanDefinition beanDefinition) {
+//        Method beanMethod = beanDefinition.getBeanMethod();
+//        if (beanMethod == null) {
+//            return instantiateClassPathBean(preInstantiateBean);
+//        }
+//        return instantiateConfigurationBean(beanMethod);
+//    }
 
     private Object instantiateClassPathBean(Class<?> preInstantiateBean) {
-        if (beans.containsKey(preInstantiateBean)) {
-            return beans.get(preInstantiateBean);
+        if (this.beans.containsKey(preInstantiateBean)) {
+            return this.beans.get(preInstantiateBean);
         }
         Constructor<?> injectedConstructor = BeanFactoryUtils.getInjectedConstructor(preInstantiateBean);
         if (injectedConstructor == null) {
@@ -67,37 +85,41 @@ public class BeanFactory {
         return instantiateConstructor(injectedConstructor);
     }
 
-    private Object instantiateConfigurationBean(Method method, BeanDefinition beanDefinition) {
-        try {
-            if (beans.containsKey(beanDefinition.getBeanClass())) {
-                return beans.get(beanDefinition.getBeanClass());
-            }
-
-            Object configClassInstance = BeanUtils.instantiateClass(beanDefinition.getBeanClass());
-            if (method.getParameters().length == 0) {
-                return method.invoke(configClassInstance);
-            }
-
-            Parameter[] parameters = method.getParameters();
-            for (Parameter parameter : parameters) {
-                BeanDefinition parameterMethodBeanDefinition = this.registry.getBeanDefinition(parameter.getType());
-                return instantiateConfigurationBean(parameterMethodBeanDefinition.getBeanMethod(), parameterMethodBeanDefinition);
-            }
-
-            Object[] args = getArguments(parameters);
-
-            return method.invoke(configClassInstance, args);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+    private Object instantiateConfigurationBean(Method method) {
+        if (this.beans.containsKey(method.getReturnType())) {
+            return getBean(method.getReturnType());
         }
+        Object configClassInstance = BeanUtils.instantiateClass(method.getDeclaringClass());
+        Object[] args = getArguments(method);
+
+        return ReflectionUtils.invokeMethod(method, configClassInstance, args);
     }
 
-    private Object[] getArguments(Parameter[] parameters) {
-        Object[] args = new Object[parameters.length];
-        for (int idx = 0; idx < parameters.length; idx++) {
-                args[idx] = beans.get(parameters[idx].getType());
+//    private Object instantiateConfigurationBean(Method method, Object configClassInstance) {
+//
+//        Parameter[] parameters = method.getParameters();
+//        for (Parameter parameter : parameters) {
+//            BeanDefinition parameterMethodBeanDefinition = this.registry.getMethodBeanDefinition(parameter.getType());
+//            return instantiateConfigurationBean(parameterMethodBeanDefinition.getBeanMethod());
+//        }
+//        Object[] args = getArguments(parameters);
+//        return ReflectionUtils.invokeMethod(method, configClassInstance, args);
+//    }
+
+    private Object[] getArguments(Method method) {
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Object[] args = new Object[parameterTypes.length];
+        for (int idx = 0; idx < parameterTypes.length; idx++) {
+            args[idx] = instantiateMethodParameterBean(parameterTypes[idx]);
         }
         return args;
+    }
+
+    private Object instantiateMethodParameterBean(Class<?> parameterType) {
+        if (beans.containsKey(parameterType)) {
+            return beans.get(parameterType);
+        }
+        return instantiateConfigurationBean(this.registry.getMethodBeanDefinition(parameterType).getBeanMethod());
     }
 
     private Object instantiateConstructor(Constructor<?> injectedConstructor) {
@@ -107,8 +129,8 @@ public class BeanFactory {
     private Object[] getInstantiatedParameters(Constructor<?> injectedConstructor) {
         return Arrays.stream(injectedConstructor.getParameterTypes())
                 .map(parameterType -> {
-                    Class<?> concreteClass = BeanFactoryUtils.findConcreteClass(parameterType, this.registry.getPreInstantiateBeans());
-                    return instantiateClassPathBean(concreteClass, this.registry.getBeanDefinition(concreteClass));
+                    Class<?> concreteClass = BeanFactoryUtils.findConcreteClass(parameterType, this.registry.getPreInstantiateClassBean());
+                    return instantiateClassPathBean(concreteClass);
                 }).toArray();
     }
 }
