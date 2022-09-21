@@ -23,17 +23,17 @@ public class BeanDefinitionRegistry {
         }
     }
 
-    public void registerConfigurationBeans(Class<?>... componentClasses) {
-        for (Class<?> componentClass : componentClasses) {
-            registerConfigurationBean(componentClass);
+    public void registerConfigurationBeans(Set<Class<?>> configurationClasses) {
+        for (Class<?> configurationClass : configurationClasses) {
+            registerConfigurationBean(configurationClass);
         }
     }
 
-    private void registerConfigurationBean(Class<?> componentClass) {
-        Set<Method> beanMethods = ReflectionUtils.getAllMethods(componentClass, ReflectionUtilsPredicates.withAnnotation(Bean.class));
+    private void registerConfigurationBean(Class<?> configurationClass) {
+        Set<Method> beanMethods = ReflectionUtils.getAllMethods(configurationClass, ReflectionUtilsPredicates.withAnnotation(Bean.class));
 
         for (Method method : beanMethods) {
-            this.methodBeanDefinitions.add(new BeanDefinition(componentClass, method));
+            this.methodBeanDefinitions.add(new BeanDefinition(configurationClass, method));
         }
     }
 

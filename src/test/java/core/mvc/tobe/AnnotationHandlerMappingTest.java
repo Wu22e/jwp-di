@@ -11,6 +11,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import support.test.DBInitializer;
 
+import javax.sql.DataSource;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class AnnotationHandlerMappingTest {
@@ -20,11 +22,13 @@ public class AnnotationHandlerMappingTest {
     @BeforeEach
     public void setup() {
         ApplicationContext applicationContext = new ApplicationContext(MyConfiguration.class);
+        applicationContext.initialize();
         handlerMapping = new AnnotationHandlerMapping(applicationContext);
         handlerMapping.initialize();
 
-        DBInitializer.initialize();
-        userDao = new UserDao(applicationContext.getBean(JdbcTemplate.class));
+        DBInitializer.initialize(applicationContext.getBean(DataSource.class));
+        userDao = applicationContext.getBean(UserDao.class);
+        System.out.println("------>1 " + userDao);
     }
 
     @Test
@@ -32,6 +36,8 @@ public class AnnotationHandlerMappingTest {
         User user = new User("pobi", "password", "포비", "pobi@nextstep.camp");
         createUser(user);
         assertThat(userDao.findByUserId(user.getUserId())).isEqualTo(user);
+        System.out.println("------>2 " + userDao);
+
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/users");
         request.setParameter("userId", user.getUserId());

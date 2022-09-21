@@ -1,6 +1,8 @@
 package core.di;
 
 
+import java.util.Set;
+
 public class AnnotatedBeanDefinitionReader {
     private final BeanDefinitionRegistry registry;
 
@@ -8,7 +10,7 @@ public class AnnotatedBeanDefinitionReader {
         this.registry = beanDefinitionRegistry;
     }
 
-    public void register(Class<?>... componentClasses) {
-        this.registry.registerConfigurationBeans(componentClasses);
+    public void register(Set<Class<?>> configurationClasses) {
+        this.registry.registerConfigurationBeans(configurationClasses);
     }
 }

@@ -8,26 +8,34 @@ import core.di.ClassPathBeanDefinitionScanner;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ApplicationContext {
-    private final BeanFactory beanFactory;
+    private BeanFactory beanFactory;
+    private final Set<Class<?>> configurationClasses;
 
-    public ApplicationContext(Class<?>... componentClasses) {
+    public ApplicationContext(Class<?>... configurationClasses) {
+        this.configurationClasses = Arrays.stream(configurationClasses)
+                .collect(Collectors.toSet());
+    }
+
+    public void initialize() {
         BeanDefinitionRegistry beanDefinitionRegistry = new BeanDefinitionRegistry();
 
         AnnotatedBeanDefinitionReader reader = new AnnotatedBeanDefinitionReader(beanDefinitionRegistry);
-        reader.register(componentClasses);
+        reader.register(this.configurationClasses);
 
         ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(beanDefinitionRegistry);
-        scanner.scan(getBasePackages(componentClasses));
+        scanner.scan(getBasePackages(this.configurationClasses));
 
-        beanFactory = new BeanFactory(beanDefinitionRegistry);
-        beanFactory.initialize();
+        this.beanFactory = new BeanFactory(beanDefinitionRegistry);
+        this.beanFactory.initialize();
     }
 
-    private Object[] getBasePackages(Class<?>... componentClasses) {
-        return Arrays.stream(componentClasses)
-                .filter(componentClasse -> componentClasse.isAnnotationPresent(ComponentScan.class))
+    private Object[] getBasePackages(Set<Class<?>> configurationClasses) {
+        return configurationClasses.stream()
+                .filter(configurationClass -> configurationClass.isAnnotationPresent(ComponentScan.class))
                 .map(componentScan -> componentScan.getAnnotation(ComponentScan.class))
                 .map(ComponentScan::value)
                 .toArray();
